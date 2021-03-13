@@ -9,3 +9,6 @@ An automated trading framework for NinjaTrader 8 that adds lots of extra feature
 
 # Setup
 To start using, simply clone this git repository into your `Custom` folder for NinjaTrader 8. By default this is in `MyDocuments/NinjaTrader 8/bin/Custom`
+
+# Contribution
+To contribute, simply fork the project and make pull requests
