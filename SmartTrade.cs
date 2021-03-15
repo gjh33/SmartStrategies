@@ -91,7 +91,7 @@ namespace NinjaTrader.NinjaScript.SmartStrategies
         // OnStoppedOut = called each time some quantity is filled on a stop loss
         // OnProffited = called each time some quantity is filled on a profit target
         // OnFilled = called each time some quantity is filled on an entry order
-        public Action<SmartTrade> OnSubmitted, OnMarketEntered, OnCompleted, OnStoppedOut, OnProfitted, OnFilled;
+        public event Action<SmartTrade> OnSubmitted, OnMarketEntered, OnCompleted, OnStoppedOut, OnProfitted, OnFilled;
 
         private Guid OCOID;
 
@@ -132,7 +132,8 @@ namespace NinjaTrader.NinjaScript.SmartStrategies
             if (EntryOrder != null)
             {
                 SubmittedBarIndex = Config.Strategy.CurrentBar;
-                OnSubmitted(this);
+                Config.Strategy.Print("Submitted");
+                if (OnSubmitted != null) OnSubmitted(this);
             }
             return EntryOrder != null;
         }
@@ -157,28 +158,39 @@ namespace NinjaTrader.NinjaScript.SmartStrategies
         private void OrderUpdatedCallback(Order order)
         {
             if (order == null) return;
+            if (order != EntryOrder && order != StopLoss && order != ProfitTarget) return;
             if (order.OrderState == OrderState.Rejected)
             {
                 throw new Exception("An order was rejected! Strategy failure!");
             }
+            Config.Strategy.Print("Checkpoint A");
             // If our stop loss or profit target are filled before we fully fill the entry order
             // then we should just cancel the original order
             if (order == StopLoss || order == ProfitTarget)
             {
+                Config.Strategy.Print("Checking for stop loss / profit target hit");
                 if (order.OrderState == OrderState.Filled && EntryOrder.OrderState != OrderState.Filled)
                 {
+                    Config.Strategy.Print("Cancelling Entry");
                     Config.Strategy.CancelOrder(EntryOrder); // OCO will handle the other orders
                 }
             }
+            Config.Strategy.Print("Checkpoint B");
             if (order == EntryOrder && order.Filled > 0)
             {
+                Config.Strategy.Print("Entry Order");
+                if (StopLoss != null)
+                    Config.Strategy.Print("Stop Loss Not Null");
+                if (!Config.AutoProfitAndStop)
+                    Config.Strategy.Print("Config Not Set For Auto");
                 // If our order has been filled and we don't have a StopLoss yet then create one and a profit target
                 // for the filled amount
                 if (StopLoss == null && Config.AutoProfitAndStop)
                 {
+                    Config.Strategy.Print("Creating Stop Loss and Profit Target");
                     OrderAction action = Position == PositionType.Long ? OrderAction.Sell : OrderAction.BuyToCover;
                     StopLoss = Config.Strategy.SubmitOrderUnmanaged(Config.Strategy.BarsInProgressIndex, action, OrderType.StopMarket, order.Filled, 0, StopLossPrice, OCOID.ToString(), "Stop Loss");
-                    ProfitTarget = Config.Strategy.SubmitOrderUnmanaged(Config.Strategy.BarsInProgressIndex, action, OrderType.Limit, order.Filled, 0, ProfitTargetPrice, OCOID.ToString(), "Stop Loss");
+                    ProfitTarget = Config.Strategy.SubmitOrderUnmanaged(Config.Strategy.BarsInProgressIndex, action, OrderType.Limit, order.Filled, 0, ProfitTargetPrice, OCOID.ToString(), "Profit Target");
                     if (StopLoss == null || ProfitTarget == null)
                     {
                         // Just in case, throw exception
@@ -190,6 +202,7 @@ namespace NinjaTrader.NinjaScript.SmartStrategies
                 // update the stop loss and profit target quantities
                 if (StopLoss != null && order.Filled > StopLoss.Quantity && StopLoss.OrderState != OrderState.Filled && ProfitTarget.OrderState != OrderState.Filled)
                 {
+                    Config.Strategy.Print("Adjusting Stop Loss and Profit Target");
                     Config.Strategy.ChangeOrder(StopLoss, order.Filled, StopLoss.LimitPrice, StopLoss.StopPrice);
                     Config.Strategy.ChangeOrder(ProfitTarget, order.Filled, ProfitTarget.LimitPrice, ProfitTarget.StopPrice);
                 }
@@ -206,22 +219,27 @@ namespace NinjaTrader.NinjaScript.SmartStrategies
                     MarketEntered();
                 }
             }
+            Config.Strategy.Print("Checkpoint C");
             if (order == StopLoss)
             {
+                Config.Strategy.Print("Stop Loss");
                 if (StopLossCount != StopLoss.Filled)
                 {
                     StoppedOut();
                 }
             }
+            Config.Strategy.Print("Checkpoint D");
             if (order == ProfitTarget)
             {
+                Config.Strategy.Print("Profit Target");
                 if (ProfitCount != ProfitTarget.Filled)
                 {
                     Profitted();
                 }
             }
+            Config.Strategy.Print("Checkpoint E");
             // Completion events are always last so all data is filled first!
-            if (order == StopLoss || order == ProfitTarget)
+            if ((order == StopLoss || order == ProfitTarget) && ProfitTarget != null && StopLoss != null)
             {
                 if (StopLoss.Filled + ProfitTarget.Filled == EntryOrder.Filled)
                 {
@@ -241,25 +259,29 @@ namespace NinjaTrader.NinjaScript.SmartStrategies
                 Fill = FillType.Partial;
             }
             FillCount = EntryOrder.Filled;
-            OnFilled(this);
+            Config.Strategy.Print("Filled " + FillCount);
+            if (OnFilled != null) OnFilled(this);
         }
 
         private void MarketEntered()
         {
             Status = MarketStatus.InMarket;
-            OnMarketEntered(this);
+            Config.Strategy.Print("Market Entered");
+            if (OnMarketEntered != null) OnMarketEntered(this);
         }
 
         private void StoppedOut()
         {
             StopLossCount = StopLoss.Filled;
-            OnStoppedOut(this);
+            Config.Strategy.Print("Stopped Out " + StopLossCount);
+            if (OnStoppedOut != null) OnStoppedOut(this);
         }
 
         private void Profitted()
         {
             ProfitCount = ProfitTarget.Filled;
-            OnProfitted(this);
+            Config.Strategy.Print("Profited " + ProfitCount);
+            if (OnProfitted != null) OnProfitted(this);
         }
 
         private void CompleteTrade()
@@ -267,17 +289,20 @@ namespace NinjaTrader.NinjaScript.SmartStrategies
             if (ProfitTarget.Filled == EntryOrder.Filled)
             {
                 Completion = CompletionType.TotalProfit;
+                Config.Strategy.Print("Total Profit");
             }
             else if (StopLoss.Filled == EntryOrder.Filled)
             {
                 Completion = CompletionType.TotalLoss;
+                Config.Strategy.Print("Total Loss");
             }
             else
             {
                 Completion = CompletionType.Mixed;
+                Config.Strategy.Print("Mixed Results");
             }
             Config.Strategy.OrderUpdated -= OrderUpdatedCallback;
-            OnCompleted(this);
+            if (OnCompleted != null) OnCompleted(this);
         }
 
         public struct Configuration

@@ -26,7 +26,7 @@ namespace NinjaTrader.NinjaScript.SmartStrategies
         /// Callback for when an order is updated.
         /// You can use this for your own order management.
         /// </summary>
-        public Action<Order> OrderUpdated;
+        public event Action<Order> OrderUpdated;
 
         /// <summary>
         /// The correct bars in progress index to submit trades to.
@@ -137,7 +137,7 @@ namespace NinjaTrader.NinjaScript.SmartStrategies
 
 		sealed protected override void OnBarUpdate()
 		{
-			if (CurrentBar <= BarsRequiredToTrade)
+            if (CurrentBar <= BarsRequiredToTrade)
 				return;
 			if (BarsInProgress != 0) 
 				return;
@@ -148,7 +148,7 @@ namespace NinjaTrader.NinjaScript.SmartStrategies
 
         sealed protected override void OnOrderUpdate(Order order, double limitPrice, double stopPrice, int quantity, int filled, double averageFillPrice, OrderState orderState, DateTime time, ErrorCode error, string comment)
         {
-            OrderUpdated.Invoke(order);
+            if (OrderUpdated != null) OrderUpdated(order);
         }
     }
 }
