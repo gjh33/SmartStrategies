@@ -7,6 +7,10 @@ An automated trading framework for NinjaTrader 8 that adds lots of extra feature
 * Default strategy config to remove boilerplate code
 * Automatic Tick Replay support. Submits orders to a 1 tick data series when using historical data, but submits to primary data series when using realtime data.
 
+# Disclaimer
+
+Use at your own risk. It's advised not to use this with real money trades, as it's still very untested and in it's early stages.
+
 # Setup
 To start using, simply clone this git repository into your `Custom` folder for NinjaTrader 8. By default this is in `MyDocuments/NinjaTrader 8/bin/Custom`. Then open the ninja script project in visual studio. To do this, from the ninja trader script editor, click the button on the top to open visual studio project.
 
