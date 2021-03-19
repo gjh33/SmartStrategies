@@ -22,6 +22,14 @@ namespace NinjaTrader.NinjaScript.SmartStrategies
     /// </summary>
 	public abstract class BaseSmartStrategy : Strategy
 	{
+        [NinjaScriptProperty]
+		[Display(Name="Verbose", Order=1, GroupName="Smart Strategy Settings", Description = "When enabled, trades will print status updates and debug information")]
+        public bool Verbose { get; set; }
+
+        [NinjaScriptProperty]
+		[Display(Name="Ignore Historical Data", Order=2, GroupName="Smart Strategy Settings", Description = "When enabled, historical data won't call OnUpdate()")]
+        public bool IgnoreHistoricalData { get; set; }
+
         /// <summary>
         /// Callback for when an order is updated.
         /// You can use this for your own order management.
@@ -108,28 +116,36 @@ namespace NinjaTrader.NinjaScript.SmartStrategies
                     // Smart Strategies don't currently support this, but will in the future
                     IsInstantiatedOnEachOptimizationIteration = true;
 
+                    VPrint("LC: Setting Defaults");
                     SetDefaults();
                     break;
                 case State.Configure:
                     AddDataSeries(BarsPeriodType.Tick, 1);
+                    VPrint("LC: Configuring");
                     Configure();
                     break;
                 case State.DataLoaded:
+                    VPrint("LC: On Data Loaded");
                     OnDataLoaded();
                     break;
                 case State.Active:
+                    VPrint("LC: On Activated");
                     OnActivated();
                     break;
                 case State.Terminated:
+                    VPrint("LC: Cleanup");
                     Cleanup();
                     break;
                 case State.Historical:
+                    VPrint("LC: On Begin Historical Data");
                     OnBeginHistoricalData();
                     break;
                 case State.Realtime:
+                    VPrint("LC: On Begin Realtime Data");
                     OnBeginRealtimeData();
                     break;
                 case State.Transition:
+                    VPrint("LC: On Transition");
                     OnHistoricalDataTransition();
                     break;
             }
@@ -143,12 +159,19 @@ namespace NinjaTrader.NinjaScript.SmartStrategies
 				return;
 			if (CurrentBars[0] < 1)
 				return;
+            if (IgnoreHistoricalData && State == State.Historical)
+                return;
             OnUpdate();
 		}
 
         sealed protected override void OnOrderUpdate(Order order, double limitPrice, double stopPrice, int quantity, int filled, double averageFillPrice, OrderState orderState, DateTime time, ErrorCode error, string comment)
         {
             if (OrderUpdated != null) OrderUpdated(order);
+        }
+
+        public void VPrint(object value)
+        {
+            if (Verbose) Print(string.Join("", "[", DateTime.Now.ToString("G"), "] ", value));
         }
     }
 }
