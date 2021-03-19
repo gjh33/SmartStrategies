@@ -18,7 +18,7 @@ Once in visual studio, click "show all files" in solution explorer. Then find th
 
 # Usage
 ## High Fidelity Backtesting
-Smart Strategies will automatically submit orders on historical data to a 1 tick version of your primary chart. This is exactly the same result as setting "Order Fill Resolution" to High in historical fill settings in Ninja Trader 8. However when done manually like this, allows the use of Tick Replay.
+Smart Strategies will automatically submit orders on historical data to a 1 tick version of your primary chart. This is exactly the same result as setting "Order Fill Resolution" to High in historical fill settings in Ninja Trader 8. However when done manually like this, allows the use of Tick Replay. This is important because if you want to add any additional data series to your chart, note the BarsInProgressIndex will be 2, not 1. Since index 1 is being used for this feature.
 
 Please follow [this guide](https://ninjatrader.com/support/helpGuides/nt8/?tick_replay.htm) from Ninja Trader to enable the use of tick replay. Now when backtesting you can enable this option. Without this option enabled, orders and logic are not computed on every tick when simulating historical data. While this is much faster, it's not at all accurate for tick by tick strategies. It's recommended you enable it for backtesting any strategies. Smart Strategies will handle the rest!
 
